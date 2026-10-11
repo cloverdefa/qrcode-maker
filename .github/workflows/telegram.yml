@@ -65,5 +65,5 @@ jobs:
             ${{ steps.release.outputs.tag }}
             📝 變更內容
             ${{ steps.changes.outputs.message }}
-            🔗 ${{ steps.changes.outputs.url }}
+            🔗 ${{ steps.release.outputs.url }}
 
