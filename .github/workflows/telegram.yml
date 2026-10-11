@@ -1,0 +1,69 @@
+name: Telegram Notification
+
+on:
+  workflow_run:
+    workflows:
+      - Release
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Send Telegram Notification
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Get release tag
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag=$(gh release view \
+            --repo "$GITHUB_REPOSITORY" \
+            --json tagName \
+            --jq '.tagName')
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "url=https://github.com/$GITHUB_REPOSITORY/releases/tag/$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Get commit changes
+        id: changes
+        run: |
+          sha="${{ github.event.workflow_run.head_sha }}"
+          subject=$(git log -1 --pretty=%s "$sha")
+          body=$(git log -1 --pretty=%b "$sha")
+      
+          {
+            echo "message<<EOF"
+            echo "$subject"
+            if [ -n "$body" ]; then
+              echo ""
+              echo "$body"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      
+          echo "url=https://github.com/${GITHUB_REPOSITORY}/commit/${sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Send Telegram notification
+        uses: appleboy/telegram-action@v1
+        with:
+          to: ${{ secrets.GROUPS_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            📦 儲存庫
+            ${{ github.repository }}
+            🏷️ 版本
+            ${{ steps.release.outputs.tag }}
+            📝 變更內容
+            ${{ steps.changes.outputs.message }}
+            🔗 ${{ steps.changes.outputs.url }}
+
