@@ -1,0 +1,22 @@
+[project]
+name = "qrcode-maker"
+version = "1.0.0"
+description = "A simple Windows desktop QR code maker."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "Pillow>=10.0.0",
+    "qrcode>=7.4.2",
+]
+
+[dependency-groups]
+dev = ["pyinstaller>=6.0.0"]
+
+[project.scripts]
+qrcode-maker = "qrcode_maker:main"
+
+[tool.uv]
+package = true
+
+[tool.pyinstaller]
+# Build with: uv run pyinstaller --noconfirm --clean --windowed --name QRCodeMaker --collect-all qrcode --collect-all PIL qrcode_maker.py

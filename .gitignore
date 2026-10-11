@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# Keep this project's uv configuration and resolved dependency lockfile in Git.
+!pyproject.toml
+!uv.lock
