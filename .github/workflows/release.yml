@@ -32,15 +32,27 @@ on:
 
   workflow_dispatch:
     inputs:
+      action:
+        description: What to do
+        required: true
+        type: choice
+        options:
+          - create-release
+          - attach-exe
+        default: create-release
       release_type:
         description: Release version type
-        required: true
+        required: false
         type: choice
         options:
           - patch
           - minor
           - major
         default: patch
+      release_tag:
+        description: Existing release tag (used with attach-exe)
+        required: false
+        type: string
 
 
 # ================================================================
@@ -81,7 +93,7 @@ jobs:
     # ==============================================================
 
     if: >
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && inputs.action == 'create-release') ||
       (
         github.event.pull_request.merged == true &&
         github.event.pull_request.base.ref == 'main' &&
@@ -865,10 +877,31 @@ jobs:
 
     if: needs.version.outputs.should_release == 'true'
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
 
     steps:
+
+      # Build the Windows executable before creating the release. This job
+      # also creates the release, so it does not depend on a release event
+      # generated with GITHUB_TOKEN (which GitHub does not use to trigger
+      # another workflow).
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.target_sha }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install project and build dependencies
+        run: uv sync --dev
+
+      - name: Build Windows executable
+        run: uv run pyinstaller --noconfirm --clean QRCodeMaker.spec
 
       # ============================================================
       # Create Release
@@ -878,6 +911,8 @@ jobs:
         uses: softprops/action-gh-release@v3
 
         with:
+          files: dist/QRCodeMaker.exe
+
           # --------------------------------------------------------
           # Release tag
           # --------------------------------------------------------
@@ -918,4 +953,36 @@ jobs:
           # --------------------------------------------------------
 
           generate_release_notes: true
+
+  # ==================================================================
+  # Manually rebuild and attach an executable to an existing Release.
+  # ==================================================================
+
+  attach-exe:
+    name: Build and Attach Executable
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'attach-exe'
+    runs-on: windows-latest
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install project and build dependencies
+        run: uv sync --dev
+
+      - name: Build Windows executable
+        run: uv run pyinstaller --noconfirm --clean QRCodeMaker.spec
+
+      - name: Attach executable to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: gh release upload "$env:RELEASE_TAG" dist/QRCodeMaker.exe --clobber
 
