@@ -1,0 +1,36 @@
+name: Build Windows release asset
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build QRCodeMaker.exe
+    runs-on: windows-latest
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install project and build dependencies
+        run: uv sync --dev
+
+      - name: Build Windows executable
+        run: uv run pyinstaller --noconfirm --clean QRCodeMaker.spec
+
+      - name: Attach executable to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$env:RELEASE_TAG" dist/QRCodeMaker.exe --clobber
