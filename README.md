@@ -2,6 +2,10 @@
 
 Windows 桌面 QR code 產生器。輸入一般文字或 URL，即可產生 QR code 預覽並另存為 PNG 或 JPEG。介面使用 Python 內建的 Tkinter 建立。
 
+## 使用示範
+
+![QR Code Maker 使用示範：輸入網址、產生 QR code 並儲存](assets/qrcode-maker-demo.gif)
+
 ## 建立環境
 
 先安裝 [uv](https://docs.astral.sh/uv/)，然後在專案資料夾執行：
