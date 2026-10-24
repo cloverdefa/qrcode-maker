@@ -271,7 +271,16 @@ impl eframe::App for QrCodeMaker {
 }
 
 fn main() -> eframe::Result {
-    let options = eframe::NativeOptions { viewport: egui::ViewportBuilder::default().with_inner_size([560.0, 390.0]).with_min_inner_size([220.0, 260.0]).with_resizable(true), ..Default::default() };
+    let icon = image::load_from_memory(include_bytes!("../assets/app-icon.png"))
+        .expect("embedded app icon must be valid")
+        .into_rgba8();
+    let (icon_width, icon_height) = icon.dimensions();
+    let icon = egui::IconData {
+        rgba: icon.into_raw(),
+        width: icon_width,
+        height: icon_height,
+    };
+    let options = eframe::NativeOptions { viewport: egui::ViewportBuilder::default().with_inner_size([560.0, 390.0]).with_min_inner_size([220.0, 260.0]).with_resizable(true).with_icon(icon), ..Default::default() };
     eframe::run_native("QR Code Maker", options, Box::new(|creation_context| {
         let mut fonts = egui::FontDefinitions::default();
         fonts.font_data.insert(
