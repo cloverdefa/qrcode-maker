@@ -891,17 +891,11 @@ jobs:
         with:
           ref: ${{ needs.version.outputs.target_sha }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Install project and build dependencies
-        run: uv sync --dev
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build Windows executable
-        run: uv run pyinstaller --noconfirm --clean QRCodeMaker.spec
+        run: cargo build --release
 
       # ============================================================
       # Create Release
@@ -911,7 +905,7 @@ jobs:
         uses: softprops/action-gh-release@v3
 
         with:
-          files: dist/QRCodeMaker.exe
+          files: target/release/QRCodeMaker.exe
 
           # --------------------------------------------------------
           # Release tag
@@ -968,21 +962,15 @@ jobs:
         with:
           ref: ${{ inputs.release_tag }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Install project and build dependencies
-        run: uv sync --dev
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build Windows executable
-        run: uv run pyinstaller --noconfirm --clean QRCodeMaker.spec
+        run: cargo build --release
 
       - name: Attach executable to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
-        run: gh release upload "$env:RELEASE_TAG" dist/QRCodeMaker.exe --clobber
+        run: gh release upload "$env:RELEASE_TAG" target/release/QRCodeMaker.exe --clobber
 
