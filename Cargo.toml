@@ -1,0 +1,15 @@
+[package]
+name = "qrcode-maker"
+version = "1.0.0"
+edition = "2024"
+description = "A desktop QR code maker for text, URLs, and WiFi"
+
+[[bin]]
+name = "QRCodeMaker"
+path = "src/main.rs"
+
+[dependencies]
+eframe = { version = "0.33", default-features = false, features = ["default_fonts", "glow", "x11", "wayland"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+qrcode = "0.14"
+rfd = "0.15"

@@ -1,52 +1,53 @@
 # QR Code Maker
 
-以 Python 和 Tkinter 製作的桌面 QR code 產生器。輸入文字或網址即可產生 QR code、預覽結果，並儲存為 PNG 或 JPEG 圖片。
+以 Rust 和 egui 製作的桌面 QR code 產生器。可將文字、網址或 WiFi 資訊轉成 QR code、預覽結果，並儲存為 PNG 或 JPEG 圖片。
 
 ## 功能
 
 - 將一般文字或網址轉成 QR code。
+- 產生 WiFi QR code，支援 WPA、WEP、無密碼與隱藏網路。
+- 內嵌繁體中文字型，Windows 與 Linux 執行檔皆可正常顯示中文。
 - 選擇錯誤修正等級：低（L）、中（M）、較高（Q）或高（H）。
 - 設定模組大小（1–40）；預設為 10。
-- 預覽產生的 QR code，並以 PNG 或 JPEG 格式另存。
+- 預覽 QR code，並以 PNG 或 JPEG 格式另存。
 - 按 `Ctrl + Enter` 快速產生 QR code。
 
 ## 使用示範
 
-![QR Code Maker 示範：輸入網址、產生 QR code 並儲存](assets/qrcode-maker-demo.gif)
+![Rust 桌面版 QR Code Maker 示範：輸入網址、產生 QR code，再切換至 WiFi 模式](assets/qrcode-maker-demo.gif)
 
 ## 環境需求
 
-- Python 3.10 或更新版本。
-- [uv](https://docs.astral.sh/uv/) 套件管理工具。
-- 可用的 Tkinter 桌面環境。部分 Linux 發行版需另外安裝 Tkinter 系統套件。
+- Rust stable（含 Cargo）。
+- 可用的桌面圖形環境。
 
-## 安裝與執行
+## 執行
 
 在專案目錄執行：
 
 ```bash
-uv sync
-uv run python qrcode_maker.py
-```
-
-也可以透過已設定的命令列入口啟動：
-
-```bash
-uv run qrcode-maker
+cargo run --release
 ```
 
 ## 建置 Windows 執行檔
 
-在 Windows 環境的專案目錄執行：
+在 Windows 環境執行：
 
 ```powershell
-uv run pyinstaller --noconfirm --clean QRCodeMaker.spec
+cargo build --release
 ```
 
-建置完成後，執行檔會位於 `dist\QRCodeMaker.exe`。PyInstaller 應用程式建議在目標作業系統上建置，因此 Windows 執行檔請在 Windows 上產生。
+執行檔位於 `target\release\QRCodeMaker.exe`。請在目標作業系統上建置應用程式。
+
+## Linux x86_64 桌面版（Omarchy / WSLg）
+
+GitHub Release 也會提供 `qrcode-maker-linux-x86_64.tar.gz`。解壓後執行 `./install.sh`，即可安裝到使用者目錄並加入桌面應用程式選單；也可以直接執行 `./QRCodeMaker`。移除時執行 `./uninstall.sh`。
+
+此版本適用於 Omarchy 等 64 位元 Linux 桌面，以及啟用 WSLg 的 WSL2。主機需要 X11 或 Wayland 圖形環境；儲存對話框使用 XDG Desktop Portal。
 
 ## 專案檔案
 
-- `qrcode_maker.py`：Tkinter 圖形介面與 QR code 產生、儲存功能。
-- `QRCodeMaker.spec`：PyInstaller Windows GUI 執行檔建置設定。
-- `pyproject.toml`：專案資訊、執行依賴及 `qrcode-maker` 命令列入口。
+- `src/main.rs`：egui 圖形介面、QR code 產生及圖片儲存。
+- `Cargo.toml`：Rust 專案資訊與依賴設定。
+- `packaging/linux/`：Linux 桌面版安裝、移除指令與說明。
+- `assets/fonts/`：內嵌的 Noto Sans TC 字型與 SIL Open Font License 授權。
