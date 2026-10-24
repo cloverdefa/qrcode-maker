@@ -20,6 +20,7 @@ struct QrCodeMaker {
     error_level: usize,
     box_size: u32,
     qr: Option<GrayImage>,
+    generated_state: Option<(String, usize, u32)>,
     texture: Option<egui::TextureHandle>,
     status: String,
 }
@@ -37,6 +38,7 @@ impl Default for QrCodeMaker {
             error_level: 1,
             box_size: 10,
             qr: None,
+            generated_state: None,
             texture: None,
             status: "提示：按 Ctrl + Enter 可快速產生。".into(),
         }
@@ -70,6 +72,14 @@ impl QrCodeMaker {
         Ok(format!("{};;", parts.join(";")))
     }
 
+    fn has_current_qr(&self) -> bool {
+        let Ok(payload) = self.payload() else { return false };
+        self.qr.is_some()
+            && self.generated_state.as_ref().is_some_and(|(generated, level, size)| {
+                generated == &payload && *level == self.error_level && *size == self.box_size
+            })
+    }
+
     fn generate(&mut self, ctx: &egui::Context) {
         let payload = match self.payload() {
             Ok(payload) => payload,
@@ -87,6 +97,7 @@ impl QrCodeMaker {
                 let image = egui::ColorImage::from_rgba_unmultiplied([qr.width() as usize, qr.height() as usize], &rgba);
                 self.texture = Some(ctx.load_texture("qr-preview", image, egui::TextureOptions::NEAREST));
                 self.qr = Some(qr);
+                self.generated_state = Some((payload, self.error_level, self.box_size));
                 self.status = format!("已產生{}{} × {} QR code。", if self.mode == Mode::Wifi { "WiFi " } else { "" }, side, side);
             }
             Err(error) => self.status = format!("無法產生 QR code：{error}"),
@@ -94,7 +105,7 @@ impl QrCodeMaker {
     }
 
     fn save(&mut self) {
-        let Some(qr) = &self.qr else { return };
+        let Some(qr) = self.qr.as_ref().filter(|_| self.has_current_qr()).cloned() else { return };
         let Some(path) = rfd::FileDialog::new()
             .set_title("儲存 QR code")
             .set_file_name("qrcode.png")
@@ -128,6 +139,19 @@ impl eframe::App for QrCodeMaker {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::Enter)) { self.generate(ctx); }
         egui::CentralPanel::default().show(ctx, |ui| {
+            let available = ui.available_size();
+            let has_current_qr = self.has_current_qr();
+            let compact_qr = has_current_qr && (available.x < 420.0 || available.y < 460.0);
+            if compact_qr {
+                if let Some(texture) = &self.texture {
+                    let side = available.x.min(available.y).max(1.0);
+                    ui.centered_and_justified(|ui| {
+                        ui.image((texture.id(), egui::vec2(side, side)));
+                    });
+                }
+                return;
+            }
+
             ui.heading("QR Code Maker");
             ui.label("輸入文字、網址或 WiFi 資訊，立即產生 QR code。");
             ui.horizontal(|ui| {
@@ -161,26 +185,44 @@ impl eframe::App for QrCodeMaker {
                 ui.label("模組大小");
                 ui.add(egui::DragValue::new(&mut self.box_size).range(1..=40));
             });
-            ui.horizontal(|ui| {
-                if ui.button("產生 QR Code").clicked() { self.generate(ctx); }
-                if ui.add_enabled(self.qr.is_some(), egui::Button::new("另存 PNG / JPEG")).clicked() { self.save(); }
-            });
-            ui.add_space(10.0);
-            egui::Frame::group(ui.style()).show(ui, |ui| {
-                ui.set_min_height(300.0);
-                ui.set_width(ui.available_width());
-                if let Some(texture) = &self.texture {
-                    let available = ui.available_size();
-                    let size = texture.size_vec2().x.min(texture.size_vec2().y).min(available.x).min(available.y);
-                    ui.centered_and_justified(|ui| { ui.image((texture.id(), egui::vec2(size, size))); });
-                } else { ui.centered_and_justified(|ui| { ui.label("QR code 預覽會顯示在這裡"); }); }
-            });
+            let input_ready = self.payload().is_ok();
+            if input_ready {
+                ui.horizontal(|ui| {
+                    if ui.button("產生 QR Code").clicked() { self.generate(ctx); }
+                    if has_current_qr && ui.button("另存 PNG / JPEG").clicked() { self.save(); }
+                });
+            }
+            if has_current_qr {
+                ui.add_space(8.0);
+                egui::Frame::group(ui.style()).show(ui, |ui| {
+                    let remaining = ui.available_size();
+                    ui.set_min_size(egui::vec2(ui.available_width(), remaining.y.max(160.0)));
+                    if let Some(texture) = &self.texture {
+                        let available = ui.available_size();
+                        let side = texture.size_vec2().x.min(available.x).min(available.y).max(1.0);
+                        ui.centered_and_justified(|ui| {
+                            ui.image((texture.id(), egui::vec2(side, side)));
+                        });
+                    }
+                });
+            }
             ui.label(&self.status);
         });
     }
 }
 
 fn main() -> eframe::Result {
-    let options = eframe::NativeOptions { viewport: egui::ViewportBuilder::default().with_inner_size([560.0, 780.0]).with_min_inner_size([480.0, 700.0]), ..Default::default() };
-    eframe::run_native("QR Code Maker", options, Box::new(|_| Ok(Box::<QrCodeMaker>::default())))
+    let options = eframe::NativeOptions { viewport: egui::ViewportBuilder::default().with_inner_size([560.0, 560.0]).with_min_inner_size([220.0, 260.0]).with_resizable(true), ..Default::default() };
+    eframe::run_native("QR Code Maker", options, Box::new(|creation_context| {
+        let mut fonts = egui::FontDefinitions::default();
+        fonts.font_data.insert(
+            "noto_sans_tc".to_owned(),
+            egui::FontData::from_static(include_bytes!("../assets/fonts/NotoSansTC.ttf")).into(),
+        );
+        for family in [egui::FontFamily::Proportional, egui::FontFamily::Monospace] {
+            fonts.families.entry(family).or_default().push("noto_sans_tc".to_owned());
+        }
+        creation_context.egui_ctx.set_fonts(fonts);
+        Ok(Box::<QrCodeMaker>::default())
+    }))
 }

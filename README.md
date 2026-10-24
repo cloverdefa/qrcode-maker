@@ -6,6 +6,7 @@
 
 - 將一般文字或網址轉成 QR code。
 - 產生 WiFi QR code，支援 WPA、WEP、無密碼與隱藏網路。
+- 內嵌繁體中文字型，Windows 與 Linux 執行檔皆可正常顯示中文。
 - 選擇錯誤修正等級：低（L）、中（M）、較高（Q）或高（H）。
 - 設定模組大小（1–40）；預設為 10。
 - 預覽 QR code，並以 PNG 或 JPEG 格式另存。
@@ -49,3 +50,4 @@ GitHub Release 也會提供 `qrcode-maker-linux-x86_64.tar.gz`。解壓後執行
 - `src/main.rs`：egui 圖形介面、QR code 產生及圖片儲存。
 - `Cargo.toml`：Rust 專案資訊與依賴設定。
 - `packaging/linux/`：Linux 桌面版安裝、移除指令與說明。
+- `assets/fonts/`：內嵌的 Noto Sans TC 字型與 SIL Open Font License 授權。
