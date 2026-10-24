@@ -199,19 +199,29 @@ impl eframe::App for QrCodeMaker {
                 ui.add(egui::DragValue::new(&mut self.box_size).range(1..=40));
             });
             let input_ready = self.payload().is_ok();
-            if input_ready {
+            if self.generated_state.is_some() {
+                let button_width = (ui.available_width() - ui.spacing().item_spacing.x) / 2.0;
+                ui.horizontal(|ui| {
+                    let save = egui::Button::new(egui::RichText::new("另存 PNG / JPEG").size(16.0).strong())
+                        .fill(egui::Color32::from_rgb(35, 145, 75))
+                        .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(23, 110, 55)));
+                    if ui.add_enabled(has_current_qr, save.min_size(egui::vec2(button_width, 44.0))).clicked() {
+                        self.save();
+                    }
+                    let clear = egui::Button::new(egui::RichText::new("清除").size(18.0).strong())
+                        .fill(egui::Color32::from_rgb(190, 48, 48))
+                        .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(140, 30, 30)));
+                    if ui.add_sized([button_width, 44.0], clear).clicked() {
+                        self.clear(ctx);
+                    }
+                });
+            } else if input_ready {
                 let generate = egui::Button::new(egui::RichText::new("產生 QR Code").size(18.0).strong())
                     .fill(egui::Color32::from_rgb(20, 112, 190))
                     .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(12, 83, 145)));
                 if ui.add_sized([ui.available_width(), 44.0], generate).clicked() {
                     self.generate(ctx);
                 }
-            }
-            if self.generated_state.is_some() {
-                ui.horizontal(|ui| {
-                    if has_current_qr && ui.button("另存 PNG / JPEG").clicked() { self.save(); }
-                    if ui.button("清除").clicked() { self.clear(ctx); }
-                });
             }
             if has_current_qr {
                 ui.add_space(8.0);
