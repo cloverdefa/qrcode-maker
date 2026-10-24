@@ -96,6 +96,8 @@ impl QrCodeMaker {
                 let rgba: Vec<u8> = qr.pixels().flat_map(|p| [p[0], p[0], p[0], 255]).collect();
                 let image = egui::ColorImage::from_rgba_unmultiplied([qr.width() as usize, qr.height() as usize], &rgba);
                 self.texture = Some(ctx.load_texture("qr-preview", image, egui::TextureOptions::NEAREST));
+                let preview_height = (qr.height() as f32).min(640.0);
+                ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(560.0, (preview_height + 360.0).max(560.0))));
                 self.qr = Some(qr);
                 self.generated_state = Some((payload, self.error_level, self.box_size));
                 self.status = format!("已產生{}{} × {} QR code。", if self.mode == Mode::Wifi { "WiFi " } else { "" }, side, side);
@@ -161,7 +163,7 @@ impl eframe::App for QrCodeMaker {
             ui.add_space(8.0);
             if self.mode == Mode::Text {
                 ui.label("內容");
-                ui.add(egui::TextEdit::multiline(&mut self.text).desired_rows(4).hint_text("輸入文字或網址"));
+                ui.add(egui::TextEdit::multiline(&mut self.text).desired_width(ui.available_width()).desired_rows(4).hint_text("輸入文字或網址"));
             } else {
                 ui.label("WiFi 名稱 (SSID)");
                 ui.text_edit_singleline(&mut self.ssid);
@@ -212,7 +214,7 @@ impl eframe::App for QrCodeMaker {
 }
 
 fn main() -> eframe::Result {
-    let options = eframe::NativeOptions { viewport: egui::ViewportBuilder::default().with_inner_size([560.0, 560.0]).with_min_inner_size([220.0, 260.0]).with_resizable(true), ..Default::default() };
+    let options = eframe::NativeOptions { viewport: egui::ViewportBuilder::default().with_inner_size([560.0, 390.0]).with_min_inner_size([220.0, 260.0]).with_resizable(true), ..Default::default() };
     eframe::run_native("QR Code Maker", options, Box::new(|creation_context| {
         let mut fonts = egui::FontDefinitions::default();
         fonts.font_data.insert(
