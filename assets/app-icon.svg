@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="tile" x1="54" y1="38" x2="458" y2="474" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3389e6"/>
+      <stop offset="1" stop-color="#1555a5"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="147" y1="112" x2="363" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/>
+      <stop offset="1" stop-color="#e8f3ff"/>
+    </linearGradient>
+    <filter id="shadow" x="94" y="77" width="324" height="358" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#tile)"/>
+  <path d="M24 136c0-61.856 50.144-112 112-112h240c61.856 0 112 50.144 112 112v7L24 355V136Z" fill="#fff" opacity=".07"/>
+  <rect x="116" y="96" width="280" height="320" rx="48" fill="#082e63" opacity=".3" filter="url(#shadow)"/>
+  <rect x="116" y="88" width="280" height="320" rx="48" fill="url(#glass)"/>
+  <rect x="143" y="115" width="226" height="226" rx="20" fill="#fff"/>
+  <!-- QR finder patterns -->
+  <path fill="#174f91" fill-rule="evenodd" d="M163 135h64v64h-64zm16 16v32h32v-32zM285 135h64v64h-64zm16 16v32h32v-32zM163 257h64v64h-64zm16 16v32h32v-32z"/>
+  <!-- QR data modules -->
+  <path fill="#174f91" d="M245 135h16v16h-16zm24 0h8v24h-8zm-24 24h16v8h-16zm16 16h16v16h-16zm24 0h8v24h-8zm-40 16h16v16h-16zm24 16h16v16h-16zm32 0h8v16h-8zm-80 24h16v8h-16zm24 0h24v16h-24zm32 8h16v16h-16zm24-8h16v16h-16zm24 0h16v8h-16zm-104 24h16v16h-16zm24 8h8v24h-8zm24-8h16v16h-16zm24 16h16v8h-16zm24-8h16v16h-16zm-96 32h16v16h-16zm24 0h16v8h-16zm24 8h16v16h-16zm24-8h8v24h-8zm24 0h16v16h-16z"/>
+  <!-- Scan beam -->
+  <rect x="147" y="226" width="218" height="8" rx="4" fill="#21a4ff"/>
+  <rect x="151" y="228" width="210" height="4" rx="2" fill="#7bd1ff"/>
+  <path d="M150 365h212" stroke="#c9def4" stroke-width="12" stroke-linecap="round"/>
+  <path d="M183 389h146" stroke="#d9e8f8" stroke-width="8" stroke-linecap="round"/>
+</svg>
