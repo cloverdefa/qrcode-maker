@@ -33,7 +33,7 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: What to do
+        description: What to do (attach-exe also attaches the Linux desktop package)
         required: true
         type: choice
         options:
@@ -50,7 +50,7 @@ on:
           - major
         default: patch
       release_tag:
-        description: Existing release tag (used with attach-exe)
+        description: Existing release tag (used with attach-exe to attach both desktop builds)
         required: false
         type: string
 
@@ -873,7 +873,7 @@ jobs:
   release:
     name: Create Release
 
-    needs: version
+    needs: [version, linux-build]
 
     if: needs.version.outputs.should_release == 'true'
 
@@ -891,17 +891,17 @@ jobs:
         with:
           ref: ${{ needs.version.outputs.target_sha }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Install project and build dependencies
-        run: uv sync --dev
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build Windows executable
-        run: uv run pyinstaller --noconfirm --clean QRCodeMaker.spec
+        run: cargo build --release
+
+      - name: Download Linux desktop package
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-desktop-package
+          path: release-assets
 
       # ============================================================
       # Create Release
@@ -911,7 +911,9 @@ jobs:
         uses: softprops/action-gh-release@v3
 
         with:
-          files: dist/QRCodeMaker.exe
+          files: |
+            target/release/QRCodeMaker.exe
+            release-assets/qrcode-maker-linux-x86_64.tar.gz
 
           # --------------------------------------------------------
           # Release tag
@@ -955,11 +957,12 @@ jobs:
           generate_release_notes: true
 
   # ==================================================================
-  # Manually rebuild and attach an executable to an existing Release.
+  # Manually rebuild and attach both desktop builds to an existing Release.
   # ==================================================================
 
   attach-exe:
-    name: Build and Attach Executable
+    name: Build and Attach Desktop Apps
+    needs: linux-build
     if: github.event_name == 'workflow_dispatch' && inputs.action == 'attach-exe'
     runs-on: windows-latest
     steps:
@@ -968,21 +971,70 @@ jobs:
         with:
           ref: ${{ inputs.release_tag }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Install project and build dependencies
-        run: uv sync --dev
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build Windows executable
-        run: uv run pyinstaller --noconfirm --clean QRCodeMaker.spec
+        run: cargo build --release
+
+      - name: Download Linux desktop package
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-desktop-package
+          path: release-assets
 
       - name: Attach executable to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
-        run: gh release upload "$env:RELEASE_TAG" dist/QRCodeMaker.exe --clobber
+        run: gh release upload "$env:RELEASE_TAG" target/release/QRCodeMaker.exe release-assets/qrcode-maker-linux-x86_64.tar.gz --clobber
+
+  # ==================================================================
+  # Build a portable Linux x86_64 desktop package for Omarchy and WSLg.
+  # ==================================================================
+
+  linux-build:
+    name: Build Linux x86_64 Desktop Package
+    needs: version
+    if: >-
+      always() &&
+      (needs.version.outputs.should_release == 'true' ||
+       (github.event_name == 'workflow_dispatch' && inputs.action == 'attach-exe'))
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.should_release == 'true' && needs.version.outputs.target_sha || inputs.release_tag }}
+
+      - name: Install Linux desktop build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes pkg-config libx11-dev libx11-xcb-dev libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxcb-randr0-dev libxcb-xinput-dev libxcb-xinerama0-dev libxcb-cursor-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libegl1-mesa-dev libgl1-mesa-dev libdbus-1-dev
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Linux desktop executable
+        run: cargo build --release
+
+      - name: Assemble portable desktop package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_dir="package/qrcode-maker-linux-x86_64"
+          mkdir -p "$package_dir"
+          install -m 755 target/release/QRCodeMaker "$package_dir/QRCodeMaker"
+          install -m 755 packaging/linux/install.sh "$package_dir/install.sh"
+          install -m 755 packaging/linux/uninstall.sh "$package_dir/uninstall.sh"
+          install -m 644 packaging/linux/README.txt "$package_dir/README.txt"
+          tar -C package -czf qrcode-maker-linux-x86_64.tar.gz qrcode-maker-linux-x86_64
+
+      - name: Upload Linux desktop package
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-desktop-package
+          path: qrcode-maker-linux-x86_64.tar.gz
+          if-no-files-found: error
+          retention-days: 1
 
