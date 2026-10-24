@@ -151,7 +151,15 @@ fn wifi_escape(value: &str) -> String {
 impl eframe::App for QrCodeMaker {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::Enter)) { self.generate(ctx); }
-        egui::CentralPanel::default().show(ctx, |ui| {
+        let background = egui::Color32::from_rgb(243, 246, 251);
+        let card = egui::Frame::new()
+            .fill(egui::Color32::WHITE)
+            .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(224, 230, 239)))
+            .corner_radius(egui::CornerRadius::same(12))
+            .inner_margin(egui::Margin::same(14));
+        egui::CentralPanel::default()
+            .frame(egui::Frame::new().fill(background).inner_margin(egui::Margin::same(18)))
+            .show(ctx, |ui| {
             let available = ui.available_size();
             let has_current_qr = self.has_current_qr();
             let compact_qr = has_current_qr && (available.x < 420.0 || available.y < 460.0);
@@ -165,50 +173,69 @@ impl eframe::App for QrCodeMaker {
                 return;
             }
 
-            ui.heading("QR Code Maker");
-            ui.label("輸入文字、網址或 WiFi 資訊，立即產生 QR code。");
             ui.horizontal(|ui| {
-                ui.selectable_value(&mut self.mode, Mode::Text, "文字 / 網址");
-                ui.selectable_value(&mut self.mode, Mode::Wifi, "WiFi");
-            });
-            ui.add_space(8.0);
-            if self.mode == Mode::Text {
-                ui.label("內容");
-                ui.add(egui::TextEdit::multiline(&mut self.text).desired_width(ui.available_width()).desired_rows(4).hint_text("輸入文字或網址"));
-            } else {
-                ui.label("WiFi 名稱 (SSID)");
-                ui.text_edit_singleline(&mut self.ssid);
-                ui.label("密碼");
-                ui.add(egui::TextEdit::singleline(&mut self.password).password(!self.show_password).interactive(self.security != 2));
-                ui.checkbox(&mut self.show_password, "顯示密碼");
-                ui.label("加密方式");
-                egui::ComboBox::from_id_salt("security").selected_text(["WPA / WPA2 / WPA3", "WEP", "無密碼"][self.security]).show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.security, 0, "WPA / WPA2 / WPA3");
-                    ui.selectable_value(&mut self.security, 1, "WEP");
-                    ui.selectable_value(&mut self.security, 2, "無密碼");
+                ui.label(egui::RichText::new("▦").size(28.0).strong().color(egui::Color32::from_rgb(30, 111, 196)));
+                ui.vertical(|ui| {
+                    ui.heading(egui::RichText::new("QR Code Maker").size(24.0).strong().color(egui::Color32::from_rgb(32, 46, 66)));
+                    ui.label(egui::RichText::new("快速建立文字、網址或 WiFi QR code").color(egui::Color32::from_rgb(103, 117, 138)));
                 });
-                ui.checkbox(&mut self.hidden, "隱藏的網路 (Hidden SSID)");
-            }
-            ui.add_space(8.0);
-            ui.horizontal(|ui| {
-                ui.label("錯誤修正");
-                egui::ComboBox::from_id_salt("error-level").selected_text(["低 (L)", "中 (M)", "較高 (Q)", "高 (H)"][self.error_level]).show_ui(ui, |ui| {
-                    for (index, name) in ["低 (L)", "中 (M)", "較高 (Q)", "高 (H)"].iter().enumerate() { ui.selectable_value(&mut self.error_level, index, *name); }
-                });
-                ui.label("模組大小");
-                ui.add(egui::DragValue::new(&mut self.box_size).range(1..=40));
             });
+            ui.add_space(14.0);
+            card.clone().show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("內容類型").strong().color(egui::Color32::from_rgb(58, 72, 94)));
+                    ui.selectable_value(&mut self.mode, Mode::Text, "文字 / 網址");
+                    ui.selectable_value(&mut self.mode, Mode::Wifi, "WiFi");
+                });
+                ui.add_space(10.0);
+                if self.mode == Mode::Text {
+                    ui.label(egui::RichText::new("文字或網址").strong());
+                    ui.add(egui::TextEdit::multiline(&mut self.text).desired_width(ui.available_width()).desired_rows(4).hint_text("輸入要放進 QR code 的內容"));
+                } else {
+                    ui.label(egui::RichText::new("WiFi 名稱 (SSID)").strong());
+                    ui.add(egui::TextEdit::singleline(&mut self.ssid).desired_width(ui.available_width()).hint_text("例如：Home WiFi"));
+                    ui.add_space(6.0);
+                    ui.label(egui::RichText::new("密碼").strong());
+                    ui.add(egui::TextEdit::singleline(&mut self.password).desired_width(ui.available_width()).password(!self.show_password).interactive(self.security != 2).hint_text("輸入 WiFi 密碼"));
+                    ui.horizontal(|ui| {
+                        ui.checkbox(&mut self.show_password, "顯示密碼");
+                        ui.checkbox(&mut self.hidden, "隱藏的網路");
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("加密方式");
+                        egui::ComboBox::from_id_salt("security").selected_text(["WPA / WPA2 / WPA3", "WEP", "無密碼"][self.security]).show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.security, 0, "WPA / WPA2 / WPA3");
+                            ui.selectable_value(&mut self.security, 1, "WEP");
+                            ui.selectable_value(&mut self.security, 2, "無密碼");
+                        });
+                    });
+                }
+            });
+            ui.add_space(10.0);
+            card.clone().show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("QR 設定").strong().color(egui::Color32::from_rgb(58, 72, 94)));
+                    ui.separator();
+                    ui.label("錯誤修正");
+                    egui::ComboBox::from_id_salt("error-level").selected_text(["低 (L)", "中 (M)", "較高 (Q)", "高 (H)"][self.error_level]).show_ui(ui, |ui| {
+                        for (index, name) in ["低 (L)", "中 (M)", "較高 (Q)", "高 (H)"].iter().enumerate() { ui.selectable_value(&mut self.error_level, index, *name); }
+                    });
+                    ui.label("模組大小");
+                    ui.add(egui::DragValue::new(&mut self.box_size).range(1..=40));
+                });
+            });
+            ui.add_space(12.0);
             let input_ready = self.payload().is_ok();
             if self.generated_state.is_some() {
                 let button_width = (ui.available_width() - ui.spacing().item_spacing.x) / 2.0;
                 ui.horizontal(|ui| {
-                    let save = egui::Button::new(egui::RichText::new("另存 PNG / JPEG").size(16.0).strong())
+                    let save = egui::Button::new(egui::RichText::new("另存 PNG / JPEG").size(16.0).strong().color(egui::Color32::WHITE))
                         .fill(egui::Color32::from_rgb(35, 145, 75))
                         .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(23, 110, 55)));
                     if ui.add_enabled(has_current_qr, save.min_size(egui::vec2(button_width, 44.0))).clicked() {
                         self.save();
                     }
-                    let clear = egui::Button::new(egui::RichText::new("清除").size(18.0).strong())
+                    let clear = egui::Button::new(egui::RichText::new("清除").size(18.0).strong().color(egui::Color32::WHITE))
                         .fill(egui::Color32::from_rgb(190, 48, 48))
                         .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(140, 30, 30)));
                     if ui.add_sized([button_width, 44.0], clear).clicked() {
@@ -216,7 +243,7 @@ impl eframe::App for QrCodeMaker {
                     }
                 });
             } else if input_ready {
-                let generate = egui::Button::new(egui::RichText::new("產生 QR Code").size(18.0).strong())
+                let generate = egui::Button::new(egui::RichText::new("產生 QR Code").size(18.0).strong().color(egui::Color32::WHITE))
                     .fill(egui::Color32::from_rgb(20, 112, 190))
                     .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(12, 83, 145)));
                 if ui.add_sized([ui.available_width(), 44.0], generate).clicked() {
@@ -225,7 +252,7 @@ impl eframe::App for QrCodeMaker {
             }
             if has_current_qr {
                 ui.add_space(8.0);
-                egui::Frame::group(ui.style()).show(ui, |ui| {
+                card.clone().show(ui, |ui| {
                     let remaining = ui.available_size();
                     ui.set_min_size(egui::vec2(ui.available_width(), remaining.y.max(160.0)));
                     if let Some(texture) = &self.texture {
@@ -237,7 +264,8 @@ impl eframe::App for QrCodeMaker {
                     }
                 });
             }
-            ui.label(&self.status);
+            ui.add_space(8.0);
+            ui.label(egui::RichText::new(&self.status).color(egui::Color32::from_rgb(103, 117, 138)));
         });
     }
 }
@@ -254,6 +282,12 @@ fn main() -> eframe::Result {
             fonts.families.entry(family).or_default().push("noto_sans_tc".to_owned());
         }
         creation_context.egui_ctx.set_fonts(fonts);
+        creation_context.egui_ctx.set_visuals(egui::Visuals::light());
+        let mut style = (*creation_context.egui_ctx.style()).clone();
+        style.spacing.item_spacing = egui::vec2(10.0, 8.0);
+        style.visuals.selection.bg_fill = egui::Color32::from_rgb(198, 226, 252);
+        style.visuals.selection.stroke = egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(30, 111, 196));
+        creation_context.egui_ctx.set_style(style);
         Ok(Box::<QrCodeMaker>::default())
     }))
 }
