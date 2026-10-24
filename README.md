@@ -38,7 +38,14 @@ cargo build --release
 
 執行檔位於 `target\release\QRCodeMaker.exe`。請在目標作業系統上建置應用程式。
 
+## Linux x86_64 桌面版（Omarchy / WSLg）
+
+GitHub Release 也會提供 `qrcode-maker-linux-x86_64.tar.gz`。解壓後執行 `./install.sh`，即可安裝到使用者目錄並加入桌面應用程式選單；也可以直接執行 `./QRCodeMaker`。移除時執行 `./uninstall.sh`。
+
+此版本適用於 Omarchy 等 64 位元 Linux 桌面，以及啟用 WSLg 的 WSL2。主機需要 X11 或 Wayland 圖形環境；儲存對話框使用 XDG Desktop Portal。
+
 ## 專案檔案
 
 - `src/main.rs`：egui 圖形介面、QR code 產生及圖片儲存。
 - `Cargo.toml`：Rust 專案資訊與依賴設定。
+- `packaging/linux/`：Linux 桌面版安裝、移除指令與說明。
