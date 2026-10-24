@@ -14,7 +14,7 @@
 
 ## 使用示範
 
-![Rust 桌面版 QR Code Maker 示範：輸入網址、產生 QR code，再切換至 WiFi 模式](assets/qrcode-maker-demo.gif)
+![QR Code Maker 最新介面示範：精簡初始視窗、輸入文字、產生 QR code 後展開預覽，並使用另存或清除操作](assets/qrcode-maker-demo.gif)
 
 ## 環境需求
 
