@@ -13,7 +13,7 @@
 
 ## 使用示範
 
-![QR Code Maker 示範：輸入網址、產生 QR code 並儲存](assets/qrcode-maker-demo.gif)
+![Rust 桌面版 QR Code Maker 示範：輸入網址、產生 QR code，再切換至 WiFi 模式](assets/qrcode-maker-demo.gif)
 
 ## 環境需求
 
