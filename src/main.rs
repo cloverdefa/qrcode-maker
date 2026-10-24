@@ -106,6 +106,17 @@ impl QrCodeMaker {
         }
     }
 
+    fn clear(&mut self, ctx: &egui::Context) {
+        self.text.clear();
+        self.ssid.clear();
+        self.password.clear();
+        self.qr = None;
+        self.generated_state = None;
+        self.texture = None;
+        self.status = "提示：按 Ctrl + Enter 可快速產生。".into();
+        ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(560.0, 390.0)));
+    }
+
     fn save(&mut self) {
         let Some(qr) = self.qr.as_ref().filter(|_| self.has_current_qr()).cloned() else { return };
         let Some(path) = rfd::FileDialog::new()
@@ -189,9 +200,17 @@ impl eframe::App for QrCodeMaker {
             });
             let input_ready = self.payload().is_ok();
             if input_ready {
+                let generate = egui::Button::new(egui::RichText::new("產生 QR Code").size(18.0).strong())
+                    .fill(egui::Color32::from_rgb(20, 112, 190))
+                    .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(12, 83, 145)));
+                if ui.add_sized([ui.available_width(), 44.0], generate).clicked() {
+                    self.generate(ctx);
+                }
+            }
+            if self.generated_state.is_some() {
                 ui.horizontal(|ui| {
-                    if ui.button("產生 QR Code").clicked() { self.generate(ctx); }
                     if has_current_qr && ui.button("另存 PNG / JPEG").clicked() { self.save(); }
+                    if ui.button("清除").clicked() { self.clear(ctx); }
                 });
             }
             if has_current_qr {
