@@ -1027,6 +1027,8 @@ jobs:
           install -m 755 target/release/QRCodeMaker "$package_dir/QRCodeMaker"
           install -m 755 packaging/linux/install.sh "$package_dir/install.sh"
           install -m 755 packaging/linux/uninstall.sh "$package_dir/uninstall.sh"
+          install -m 644 assets/app-icon.png "$package_dir/app-icon.png"
+          install -m 644 assets/app-icon.svg "$package_dir/app-icon.svg"
           install -m 644 packaging/linux/README.txt "$package_dir/README.txt"
           tar -C package -czf qrcode-maker-linux-x86_64.tar.gz qrcode-maker-linux-x86_64
 
