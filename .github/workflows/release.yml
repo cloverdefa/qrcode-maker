@@ -59,6 +59,10 @@ on:
 # Workflow permissions
 # ================================================================
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -744,16 +748,8 @@ jobs:
             # --------------------------------------------------------
 
             if [[ "$RELEASE_TYPE" == "none" ]]; then
-
-              echo ""
-              echo "========================================"
-              echo "No release required."
-              echo "========================================"
-
-              echo "should_release=false" >> "$GITHUB_OUTPUT"
-
-              exit 0
-
+              echo "No release-triggering commit found; defaulting to patch."
+              RELEASE_TYPE="patch"
             fi
 
           fi
