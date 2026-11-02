@@ -996,7 +996,7 @@ jobs:
       always() &&
       (needs.version.outputs.should_release == 'true' ||
        (github.event_name == 'workflow_dispatch' && inputs.action == 'attach-exe'))
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Check out release source
         uses: actions/checkout@v4
