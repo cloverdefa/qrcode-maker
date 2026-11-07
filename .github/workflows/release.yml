@@ -421,7 +421,7 @@ jobs:
 
 
             # ========================================================
-            # NO RELEASE
+            # NO RELEASE-TRIGGERING PREFIX
             #
             # 未符合上述條件的 Commit 都視為 none。
             #
@@ -435,7 +435,11 @@ jobs:
             #   build:
             #   perf:
             #
-            # 都不會觸發 Release。
+            # 注意：
+            #
+            # 若整個 PR 範圍內都沒有任何會觸發版本的 Commit，
+            # 後面仍會預設為 patch，讓每個 test → main PR
+            # 都會產生 Release。
             # ========================================================
 
             echo "Detected: NONE"
@@ -744,7 +748,8 @@ jobs:
 
 
             # --------------------------------------------------------
-            # No release required
+            # 沒有任何會觸發版本的 Commit 時，預設為 patch，
+            # 讓每個 test → main PR 都會產生 Release。
             # --------------------------------------------------------
 
             if [[ "$RELEASE_TYPE" == "none" ]]; then
@@ -890,6 +895,18 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
+      # 把 release tag 的版本寫進建置用的 Cargo.toml（不 commit 回 repo），
+      # 讓程式內 CARGO_PKG_VERSION 與 release tag 一致，版本按鈕才能正確比對。
+      - name: Stamp version into Cargo.toml
+        shell: bash
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Invalid version: $VERSION"; exit 1; }
+          sed -i -E '0,/^version = ".*"/s//version = "'"$VERSION"'"/' Cargo.toml
+          grep -m1 '^version' Cargo.toml
+
       - name: Build Windows executable
         run: cargo build --release
 
@@ -970,6 +987,17 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Stamp version into Cargo.toml
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          VERSION="${RELEASE_TAG#v}"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Invalid tag: $RELEASE_TAG"; exit 1; }
+          sed -i -E '0,/^version = ".*"/s//version = "'"$VERSION"'"/' Cargo.toml
+          grep -m1 '^version' Cargo.toml
+
       - name: Build Windows executable
         run: cargo build --release
 
@@ -1011,6 +1039,17 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Stamp version into Cargo.toml
+        shell: bash
+        env:
+          RAW_VERSION: ${{ needs.version.outputs.should_release == 'true' && needs.version.outputs.version || inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          VERSION="${RAW_VERSION#v}"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Invalid version: $RAW_VERSION"; exit 1; }
+          sed -i -E '0,/^version = ".*"/s//version = "'"$VERSION"'"/' Cargo.toml
+          grep -m1 '^version' Cargo.toml
+
       - name: Build Linux desktop executable
         run: cargo build --release
 
@@ -1035,4 +1074,3 @@ jobs:
           path: qrcode-maker-linux-x86_64.tar.gz
           if-no-files-found: error
           retention-days: 1
-
