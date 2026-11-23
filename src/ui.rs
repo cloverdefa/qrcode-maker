@@ -8,6 +8,8 @@ use eframe::egui::{self, Color32, RichText};
 
 const EC_LEVELS: [&str; 4] = ["低 (L)", "中 (M)", "較高 (Q)", "高 (H)"];
 const SECURITY_LABELS: [&str; 3] = ["WPA / WPA2 / WPA3", "WEP", "無密碼"];
+const REPO_URL: &str = "https://github.com/cloverdefa/qrcode-maker";
+const OK_GREEN: Color32 = Color32::from_rgb(35, 145, 75);
 
 fn colored_button(label: &str, size: f32, fill: Color32, stroke: Color32) -> egui::Button<'static> {
     egui::Button::new(RichText::new(label).size(size).strong().color(Color32::WHITE))
@@ -55,8 +57,7 @@ impl QrCodeMaker {
                 ui.label(RichText::new("快速建立文字、網址或 WiFi QR code").color(theme::MUTED));
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-                let has_update = matches!(self.update, UpdateState::Available(_));
-                let text = if has_update {
+                let text = if self.has_update() {
                     RichText::new(format!("v{} ● 有新版本", update::VERSION)).color(theme::WARN)
                 } else {
                     RichText::new(format!("v{}", update::VERSION)).color(theme::MUTED)
@@ -143,12 +144,7 @@ impl QrCodeMaker {
         if self.generated_state.is_some() {
             let button_width = (ui.available_width() - ui.spacing().item_spacing.x) / 2.0;
             ui.horizontal(|ui| {
-                let save = colored_button(
-                    "另存 PNG / JPEG",
-                    16.0,
-                    Color32::from_rgb(35, 145, 75),
-                    Color32::from_rgb(23, 110, 55),
-                );
+                let save = colored_button("另存 PNG / JPEG", 16.0, OK_GREEN, Color32::from_rgb(23, 110, 55));
                 if ui
                     .add_enabled(has_current_qr, save.min_size(egui::vec2(button_width, 44.0)))
                     .clicked()
@@ -187,6 +183,8 @@ impl QrCodeMaker {
         });
     }
 
+    // ---- 版本視窗 ----
+
     pub fn version_window(&mut self, ctx: &egui::Context) {
         if !self.show_version {
             return;
@@ -200,38 +198,70 @@ impl QrCodeMaker {
             .show(ctx, |ui| {
                 ui.label(RichText::new(format!("目前版本：v{}", update::VERSION)).strong());
                 ui.add_space(6.0);
-                match self.update.clone() {
-                    UpdateState::Idle => {}
-                    UpdateState::Checking => {
-                        ui.horizontal(|ui| {
-                            ui.spinner();
-                            ui.label("正在檢查更新…");
-                        });
-                    }
-                    UpdateState::UpToDate => {
-                        ui.label(RichText::new("已是最新版本。").color(Color32::from_rgb(35, 145, 75)));
-                    }
-                    UpdateState::Available(tag) => {
-                        ui.label(RichText::new(format!("有新版本：{tag}")).color(theme::WARN).strong());
-                        if ui.button("前往下載頁面").clicked() {
-                            update::open_url(update::RELEASES_URL);
-                        }
-                    }
-                    UpdateState::Failed(error) => {
-                        ui.label(RichText::new(error).color(theme::ERROR));
-                    }
-                }
+                self.update_status(ui, ctx);
                 ui.add_space(6.0);
                 ui.horizontal(|ui| {
-                    let checking = self.update == UpdateState::Checking;
-                    if ui.add_enabled(!checking, egui::Button::new("重新檢查")).clicked() {
+                    if ui
+                        .add_enabled(!self.update_busy(), egui::Button::new("重新檢查"))
+                        .clicked()
+                    {
                         self.start_update_check(ctx);
                     }
                     if ui.button("GitHub").clicked() {
-                        update::open_url("https://github.com/cloverdefa/qrcode-maker");
+                        update::open_url(REPO_URL);
                     }
                 });
             });
         self.show_version = open;
+    }
+
+    /// 依目前更新狀態繪製狀態文字與對應按鈕。
+    fn update_status(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+        match self.update.clone() {
+            UpdateState::Idle => {}
+            UpdateState::Checking => {
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    ui.label("正在檢查更新…");
+                });
+            }
+            UpdateState::UpToDate => {
+                ui.label(RichText::new("已是最新版本。").color(OK_GREEN));
+            }
+            UpdateState::Available(tag) => {
+                ui.label(RichText::new(format!("有新版本：{tag}")).color(theme::WARN).strong());
+                ui.horizontal(|ui| {
+                    if update::CAN_DOWNLOAD && ui.button("下載更新").clicked() {
+                        self.start_download(ctx, tag.clone());
+                    }
+                    if ui.button("前往下載頁面").clicked() {
+                        update::open_url(update::RELEASES_URL);
+                    }
+                });
+            }
+            UpdateState::Downloading(tag) => {
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    ui.label(format!("正在下載 {tag}…"));
+                });
+            }
+            UpdateState::Downloaded(tag, path) => {
+                ui.label(RichText::new(format!("{tag} 已下載完成。")).color(OK_GREEN).strong());
+                #[cfg(target_os = "windows")]
+                if ui.button("安裝並重新啟動").clicked() {
+                    self.finish_update(ctx, &path);
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    ui.label(RichText::new("請解壓縮後執行 install.sh。").color(theme::MUTED));
+                    if ui.button("開啟下載位置").clicked() {
+                        self.finish_update(ctx, &path);
+                    }
+                }
+            }
+            UpdateState::Failed(error) => {
+                ui.label(RichText::new(error).color(theme::ERROR));
+            }
+        }
     }
 }

@@ -5,10 +5,14 @@ use crate::update::{self, UpdateState};
 use crate::{qr, theme};
 use eframe::egui;
 use image::GrayImage;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::Receiver;
 
 pub const INITIAL_SIZE: [f32; 2] = [560.0, 390.0];
 pub const HINT: &str = "提示：按 Ctrl + Enter 可快速產生。";
+
+type CheckRx = Receiver<Result<String, String>>;
+type DownloadRx = (String, Receiver<Result<PathBuf, String>>);
 
 pub struct QrCodeMaker {
     pub form: Form,
@@ -20,11 +24,14 @@ pub struct QrCodeMaker {
     pub status: String,
     pub show_version: bool,
     pub update: UpdateState,
-    update_rx: Option<Receiver<Result<String, String>>>,
+    update_rx: Option<CheckRx>,
+    download_rx: Option<DownloadRx>,
 }
 
 impl Default for QrCodeMaker {
     fn default() -> Self {
+        // 清除上次更新留下的 .exe.old（失敗則忽略，下次啟動再試）。
+        update::cleanup_old_version();
         Self {
             form: Form::default(),
             error_level: 1,
@@ -36,11 +43,14 @@ impl Default for QrCodeMaker {
             show_version: false,
             update: UpdateState::Idle,
             update_rx: None,
+            download_rx: None,
         }
     }
 }
 
 impl QrCodeMaker {
+    // ---- QR 產生 / 儲存 ----
+
     pub fn has_current_qr(&self) -> bool {
         let Ok(payload) = self.form.payload() else { return false };
         self.qr.is_some()
@@ -105,19 +115,63 @@ impl QrCodeMaker {
 
     // ---- 版本 / 更新 ----
 
+    /// 是否有可用（或已下載）的新版本，用於標題列提示。
+    pub fn has_update(&self) -> bool {
+        matches!(
+            self.update,
+            UpdateState::Available(_) | UpdateState::Downloading(_) | UpdateState::Downloaded(..)
+        )
+    }
+
+    /// 檢查或下載進行中，用於停用「重新檢查」。
+    pub fn update_busy(&self) -> bool {
+        matches!(self.update, UpdateState::Checking | UpdateState::Downloading(_))
+    }
+
     pub fn start_update_check(&mut self, ctx: &egui::Context) {
-        if self.update == UpdateState::Checking {
+        if self.update_busy() {
             return;
         }
         self.update = UpdateState::Checking;
         self.update_rx = Some(update::spawn_check(ctx));
     }
 
+    pub fn start_download(&mut self, ctx: &egui::Context, tag: String) {
+        if !update::CAN_DOWNLOAD || self.update_busy() {
+            return;
+        }
+        self.download_rx = Some((tag.clone(), update::spawn_download(ctx, tag.clone())));
+        self.update = UpdateState::Downloading(tag);
+    }
+
+    /// Windows：替換執行檔並關閉目前程式；其他平台：開啟下載位置。
+    pub fn finish_update(&mut self, ctx: &egui::Context, path: &Path) {
+        #[cfg(target_os = "windows")]
+        match update::apply_update(path) {
+            Ok(()) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+            Err(error) => self.update = UpdateState::Failed(error),
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = ctx;
+            update::reveal_in_folder(path);
+        }
+    }
+
     fn poll_update(&mut self) {
-        let result = self.update_rx.as_ref().and_then(|rx| rx.try_recv().ok());
-        if let Some(result) = result {
-            self.update = update::state_from_result(result);
+        let checked = self.update_rx.as_ref().and_then(|rx| rx.try_recv().ok());
+        if let Some(result) = checked {
+            self.update = update::state_from_check(result);
             self.update_rx = None;
+        }
+
+        let downloaded = self
+            .download_rx
+            .as_ref()
+            .and_then(|(tag, rx)| rx.try_recv().ok().map(|result| (tag.clone(), result)));
+        if let Some((tag, result)) = downloaded {
+            self.update = update::state_from_download(tag, result);
+            self.download_rx = None;
         }
     }
 
