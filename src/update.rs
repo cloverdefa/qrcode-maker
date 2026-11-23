@@ -216,15 +216,9 @@ pub fn cleanup_old_version() {}
 
 /// 在檔案管理員顯示下載的檔案（Linux 的 tar.gz 內含 install.sh，由使用者自行安裝）。
 pub fn reveal_in_folder(path: &Path) {
-    #[cfg(target_os = "windows")]
-    {
-        let mut cmd = Command::new("explorer");
-        cmd.arg(format!("/select,{}", path.display()));
-        hide_console(&mut cmd);
-        let _ = cmd.spawn();
-    }
+    /// 非 Windows：在檔案管理員開啟下載資料夾（Linux 的 tar.gz 內含 install.sh，由使用者自行安裝）。
     #[cfg(not(target_os = "windows"))]
-    {
+    pub fn reveal_in_folder(path: &Path) {
         if let Some(dir) = path.parent() {
             open_url(&dir.to_string_lossy());
         }
