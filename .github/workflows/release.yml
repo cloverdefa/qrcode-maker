@@ -1068,7 +1068,7 @@ jobs:
           tar -C package -czf qrcode-maker-linux-x86_64.tar.gz qrcode-maker-linux-x86_64
 
       - name: Upload Linux desktop package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-desktop-package
           path: qrcode-maker-linux-x86_64.tar.gz
