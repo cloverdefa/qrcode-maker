@@ -888,7 +888,7 @@ jobs:
       # generated with GITHUB_TOKEN (which GitHub does not use to trigger
       # another workflow).
       - name: Check out release source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.version.outputs.target_sha }}
 
@@ -911,7 +911,7 @@ jobs:
         run: cargo build --release
 
       - name: Download Linux desktop package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-desktop-package
           path: release-assets
@@ -980,7 +980,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Check out release source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.release_tag }}
 
@@ -1002,7 +1002,7 @@ jobs:
         run: cargo build --release
 
       - name: Download Linux desktop package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-desktop-package
           path: release-assets
@@ -1027,7 +1027,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out release source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.version.outputs.should_release == 'true' && needs.version.outputs.target_sha || inputs.release_tag }}
 
